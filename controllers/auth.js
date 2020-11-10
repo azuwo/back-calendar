@@ -1,107 +1,103 @@
-const { response } = require("express")
-const User = require("../models/User")
-const bcrypt = require('bcryptjs')
-const {generateJWT} = require("../helpers/jwt")
-
+const { response } = require("express");
+const User = require("../models/User");
+const bcrypt = require("bcryptjs");
+const { generateJWT } = require("../helpers/jwt");
 
 const createUser = async (req, res = response) => {
+  const { email, password } = req.body;
+  try {
+    let user = await User.findOne({ email });
 
-    const { email, password } = req.body
-    try {
-
-        let user = await User.findOne({ email })
-
-        if (user) {
-            return res.status(400).json({
-                ok: false,
-                msg: 'email already registered'
-            })
-        }
-
-        user = new User(req.body)
-
-        //enctiptar contraseña
-        const salt = bcrypt.genSaltSync()
-        user.password = bcrypt.hashSync(password, salt)
-
-        await user.save()
-
-        //Generar Token
-        const token = await generateJWT(user.id,user.name)
-
-        res.status(201).json({
-            ok: true,
-            uid: user.id,
-            name: user.name,
-            token
-        })
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({
-            ok: false,
-            msg: 'Please contact your Admin'
-        })
+    if (user) {
+      return res.status(400).json({
+        ok: false,
+        msg: "email already registered",
+      });
     }
-}
 
-const loginUser = async(req, res = response) => {
+    user = new User(req.body);
 
-    const { email, password } = req.body
+    //enctiptar contraseña
+    const salt = bcrypt.genSaltSync();
+    user.password = bcrypt.hashSync(password, salt);
 
-    try {
-        let user = await User.findOne({ email })
+    await user.save();
 
-        if (!user) {
-            return res.status(400).json({
-                ok: false,
-                msg: `User or Password don't match`
-            })
-        }
+    //Generar Token
+    const token = await generateJWT(user.id, user.name);
 
-        //Confirmar Passwords
-        const validPassword = bcrypt.compareSync(password,user.password)
+    res.status(201).json({
+      ok: true,
+      uid: user.id,
+      name: user.name,
+      token,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      ok: false,
+      msg: "Please contact your Admin",
+    });
+  }
+};
 
-        if(!validPassword){
-            return res.status(400).json({
-                ok: false,
-                msg: `User or Password don't match`
-            })
-        }
+const loginUser = async (req, res = response) => {
+  const { email, password } = req.body;
 
-        //Generar JWT (JSON Web Token)
-        const token = await generateJWT(user.id,user.name)
+  try {
+    let user = await User.findOne({ email });
 
-        res.json({
-            ok: true,
-            uid: user.id,
-            name: user.name,
-            token
-        })
-
-    } catch (error) {
-       // console.log(error)
-        res.status(500).json({
-            ok: false,
-            msg: 'Please contact your Admin'
-        })
+    if (!user) {
+      return res.status(400).json({
+        ok: false,
+        msg: `User or Password don't match`,
+      });
     }
-}
 
-const renewToken = async(req, res = response) => {
+    //Confirmar Passwords
+    const validPassword = bcrypt.compareSync(password, user.password);
 
-    const { uid, name } = req;
+    if (!validPassword) {
+      return res.status(400).json({
+        ok: false,
+        msg: `User or Password don't match`,
+      });
+    }
 
-    // Generar JWT
-    const token = await generateJWT( uid, name );
+    //Generar JWT (JSON Web Token)
+    const token = await generateJWT(user.id, user.name);
 
     res.json({
-        ok: true,
-        token
-    })
-}
+      ok: true,
+      uid: user.id,
+      name: user.name,
+      token,
+    });
+  } catch (error) {
+    // console.log(error)
+    res.status(500).json({
+      ok: false,
+      msg: "Please contact your Admin",
+    });
+  }
+};
+
+const renewToken = async (req, res = response) => {
+  const { uid, name } = req;
+
+  // Generar JWT
+  const token = await generateJWT(uid, name);
+
+  res.json({
+    ok: true,
+    uid,
+    name,
+    token,
+  });
+};
 
 module.exports = {
-    createUser,
-    loginUser,
-    renewToken
-}
+  createUser,
+  loginUser,
+  renewToken,
+};
